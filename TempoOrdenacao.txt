@@ -1,0 +1,204 @@
+#include "bib_sort.h" // Prototipo das funcoes utilizadas 
+#define TAM 10	// Tamanho real do vetor criado
+#define MEIO TAM / 2	// Calcula o meio do vetor
+
+void print (int *v){		//Funcao exclusiva para mostrar o vetor caso necessario
+	int i;
+	for (i=0; i<TAM; i++){
+		printf ("%6d ", v[i]);	// " %6d reserva seis espacos para os numeros
+		if ( (i+1) % 10 == 0) printf ("\n"); // organiza de 10 em 10
+	}
+}
+
+int original[TAM];
+/* Gerar numeros para o vetor randomicamente 
+	* Ex: rand() % size
+	* rand(): Definido em stdlib.h
+	* size: Tamanho maximo onde os elementos podem ser gerados
+	
+	* Para que haja trocas de valores a cada chamada de inicio de programa 
+		e necessario usar no main(): srand (time(NULL)); para trocar o valor da semente
+		no qual calcula os numeros
+*/
+void START (void){ // funcao start
+	int i;
+	for (i=0; i<TAM; i++)
+		original[i] = 1 + rand() % 100; // soma com 1 para retirar o 0 da randomizacao
+} // fim da funcao start
+
+
+void preencher (int *v){ // funcao preencher
+	int i;
+	for (i=0; i<TAM; i++)
+		v[i] = original[i]; // sempre insere os mesmos valores desde o inicio do programa
+} // fim da funcao preencher
+
+/* Apresentacao do tempo de cada ordenacao 
+	* As linhas representam as duas ordenacoes analisadas
+		*InsertSort, QuickSort
+	
+	*As colunas representam os tempos de cada ordenacao
+		*	Tempo 1: Ordena crescente
+		*	Tempo 2: Ordena crescente com ele ja ordenado
+		*	Tempo 3: Ordena decrescente depois crescente
+		*	Tempo 4: Ordena crescente ate o meio e decrescente ate o fim
+		*	Tempo 5: Ordena decrescente ate o meio e crescente ate o fim 
+*/
+int tempo_gasto (double tempo[][5]){
+	clock_t cont = 0; // clock_t e definido em time.h, e um apelido (typedef) de long
+	int i, j;
+	const char nome[3][12] = {"INSERT SORT", "QUICK SORT"};
+	for (i=0; i<3; i++){
+		printf ("\n\t\t%s\n", nome[i]);	//Nome de cada ordenacao
+		for (j=0; j<5; j++){
+			printf ("\n Tempo %d: %G s", j+1, tempo[i][j]); // %G e um especificador de formato que escolhe notacao cientifica ou ponto flutuante
+			if (!tempo[i][j]) printf ("\t Tempo menor que um microsegundo"); // Se o tempo for exatamente igual a 0
+			printf ("\n");
+		}
+	}
+}
+// Funcao para auxiliar a ordenacao crescente
+int crescente (int a, int b){
+	if (a <= b)	return 1;
+	else	return 0;
+}
+// Funcao para auxiliar a ordenacao decrescente
+int decrescente (int a, int b){
+	if (a >= b)	return 1;
+	else	return 0;
+}
+/* 			Metodos analisados 		
+	* Prototipo: void *nome* (int *vetor, int inicio, int fim, int (*compara) (int, int))
+		* vetor: O corpo analisado
+		* inicio: Indica onde a ordenacao comecara
+		* fim: limite da ordenacao
+		* (*compara): Ponteiro para funcao que sera ou crescente ou decrescente
+		
+*/
+
+// Ordenacao por Insercao
+void InsertSort (int *vetor, int inicio, int fim, int (*compara) (int, int)){
+	int i, j, aux;
+	for (i= inicio + 1; i<fim; i++){
+		aux = vetor[i];
+		for (j=i; (j>inicio) && (compara(aux, vetor[j-1]) == 1); j--)	// Condicao para troca
+			vetor[j] = vetor[j-1];
+		vetor[j] = aux;
+	}
+}
+
+	/* Ordenacao por troca de particoes */
+void QuickSort (int *vetor, int inicio, int fim, int (*type) (int, int)){
+	int pivo;	// Base para calculo de troca
+	if (fim > inicio){
+		pivo = particiona(vetor, inicio, fim, type);	//Separa os dados em duas particoes
+		QuickSort (vetor, inicio, pivo-1, type);	//Passo recursivo para a esquerda
+		QuickSort (vetor, pivo+1, fim, type);	//Passo recursivo para a direita
+	}
+}
+
+int particiona (int *vetor, int inicio, int fim, int (*compara) (int, int)){
+	int esq, dir, pivo, aux;
+	
+	esq = inicio;	// Inicializacao para a esquerda
+	dir = fim;	//Definicao para a direita
+	pivo = vetor[inicio]; // Base para troca
+	
+	while (esq < dir){
+		while (compara(vetor[esq], pivo))	esq ++;
+		while (!compara(vetor[dir], pivo))	dir--;
+		
+		/* Troca esq e dir */
+		if (esq < dir){
+			aux = vetor[esq];
+			vetor[esq] = vetor[dir];
+			vetor[dir] = aux;
+		}
+	}
+	vetor[inicio] = vetor[dir];
+	vetor[dir] = pivo;
+	return dir;
+}
+
+
+
+/* As funcoes para definir o tempo das ordenacoes possuem o mesmo prototipo
+	com excessao da primeira que para reduzir o tempo de criacao do codigo
+	foi definida com o parametro int pos para referir ao tempo 1 e ao tempo 2
+ 	
+	* Prototipo: void *nome* (int *v, double *tempo, void (*type_sort) (int *, int, int, int (*ordem) (int, int)));
+		* int v: vetor analisado
+		* double *tempo: ponteiro para vetor do tempo gasto para ordenar
+		* void (*type_sort): ponteiro para funcao do tipo de ordenacao utilizada
+*/
+void Sort_crescente (int *v, double *tempo, int pos, void (*type_sort) (int *, int, int, int (*ordem) (int, int))){
+	clock_t tp1, tp2;
+	tp1 = clock();
+	type_sort (v, 0, TAM, &crescente);
+	tp2 = clock();
+	
+	tempo[pos] = (double) (tp2 - tp1) / CLOCKS_PER_SEC;	// Registra o tempo exato de execucao
+}
+
+void Sort_decrescente_crescente (int *v, double *tempo, void (*type_sort) (int *, int, int, int (*ordem) (int, int))){
+	clock_t tp1, tp2;
+	preencher (v);	// Desordena o vetor
+	
+	tp1 = clock();
+	type_sort (v, 0, TAM, &decrescente);
+	type_sort (v, 0, TAM, &crescente);
+	tp2 = clock();
+	
+	tempo[2] = (double) (tp2 - tp1) / CLOCKS_PER_SEC;
+}
+
+void Sort_crescente_meio_decrescente (int *v, double *tempo, void (*type_sort) (int *, int, int, int (*ordem) (int, int))){
+	clock_t tp1, tp2;
+	preencher (v);
+	
+	tp1 = clock();
+	type_sort (v, 0, MEIO, &crescente);	//Metade do vetor ordenado crescente
+	type_sort (v, MEIO, TAM, &decrescente);	//Outra metade do vetor ordenado decrescente
+	tp2 = clock();
+	
+	tempo[3] = (double) (tp2 - tp1) / CLOCKS_PER_SEC;
+}
+
+void Sort_decrescente_meio_crescente (int *v, double *tempo, void (*type_sort) (int *, int, int, int (*ordem) (int, int))){
+	clock_t tp1, tp2;
+	preencher (v);
+	
+	tp1 = clock();
+	type_sort (v, 0, MEIO, &decrescente);
+	type_sort (v, MEIO, TAM, &crescente);
+	tp2 = clock();
+	
+	tempo[4] = (double) (tp2 - tp1) / CLOCKS_PER_SEC;
+}
+
+main (){
+	START ();
+	int v[TAM];
+	double tempo[3][5];
+	srand(time(NULL));
+	printf ("\nCalculando tempo de ordenacao para vetor de %d posicoes...\n\n", TAM);
+
+	preencher (v);
+	Sort_crescente (v, &tempo[0][0], 0, &InsertSort);
+	Sort_crescente (v, &tempo[0][0], 1, &InsertSort);
+	Sort_decrescente_crescente (v, &tempo[0][0], &InsertSort);
+	Sort_crescente_meio_decrescente (v, &tempo[0][0], &InsertSort);
+	Sort_decrescente_meio_crescente (v, &tempo[0][0], &InsertSort);
+	
+	preencher (v);
+	Sort_crescente (v, &tempo[1][0], 0, &QuickSort);
+	Sort_crescente (v, &tempo[1][0], 1, &QuickSort);
+	Sort_decrescente_crescente (v, &tempo[1][0], &QuickSort);
+	Sort_crescente_meio_decrescente (v, &tempo[1][0], &QuickSort);
+	Sort_decrescente_meio_crescente (v, &tempo[1][0], &QuickSort);
+	
+
+	tempo_gasto (tempo);
+	
+}
+
